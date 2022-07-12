@@ -1,13 +1,10 @@
-package dev.josepatino.liftheavy.ui.screens
+package dev.josepatino.liftheavy.ui.screens.exercises
 
 import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.*
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.josepatino.liftheavy.model.ResponseExerciseList
 import dev.josepatino.liftheavy.repository.ExerciseDbRepository
+import dev.josepatino.liftheavy.ui.screens.exercises.model.ResponseExercise
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,8 +26,24 @@ class ExerciseViewModel @Inject constructor(
         "waist"
     )
 
-    private var _exercisesByBodyPart = MutableLiveData<ResponseExerciseList>()
-    val exercisesByBodyPart: LiveData<ResponseExerciseList> get() = _exercisesByBodyPart
+    private var _searchVal = MutableLiveData<String>()
+    val searchVal: LiveData<String> get() = _searchVal
+
+    fun onValueChange(searchQuery: String) {
+        _searchVal.value = searchQuery
+        if (searchQuery.isEmpty()) {
+            _filteredList.value = _exercisesByBodyPart.value
+        } else {
+            _filteredList.value = _exercisesByBodyPart.value?.filter {
+                it.name.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
+
+    private var _exercisesByBodyPart = MutableLiveData<List<ResponseExercise>>()
+
+    private var _filteredList = MutableLiveData<List<ResponseExercise>>()
+    val filteredList: LiveData<List<ResponseExercise>> get() = _filteredList
 
     init {
         getExercisesByBodyPart()
@@ -38,7 +51,9 @@ class ExerciseViewModel @Inject constructor(
 
     private fun getExercisesByBodyPart(bodyPart: String = "back") = viewModelScope.launch {
         try {
-            exerciseDbRepository.getExercisesByBodyPart(bodyPart = bodyPart)
+            val exerciseList = exerciseDbRepository.getExercisesByBodyPart(bodyPart = bodyPart)
+            _exercisesByBodyPart.value = exerciseList
+            _filteredList.value = exerciseList
         } catch (e: Exception) {
             Log.d("vm", e.message.toString())
         }
